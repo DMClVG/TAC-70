@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 binread = "2.2.0"
 modular-bitfield = "0.11.2"
+tac_core = { path="../tac_core" }

@@ -2,6 +2,7 @@ use std::{u8, io::Cursor, error::Error, path::{PathBuf, Path}, fmt::Debug};
 
 use binread::prelude::*;
 use modular_bitfield::prelude::*;
+use tac_core::TAC70;
 
 
 #[derive(BitfieldSpecifier, Debug, Clone, Copy)]
@@ -53,8 +54,58 @@ struct Chunk {
 }
 
 pub struct Cartridge {
+    pub title: String,
     chunks: Vec<Chunk>,
-    title: String,
+}
+
+impl From<Cartridge> for TAC70 {
+    fn from(cart: Cartridge) -> Self {
+        let mut mem = Box::new([0u8; 0x18000]);
+        let mut code = None;
+
+        for chunk in cart.chunks {
+            use ChunkType::*;
+            match chunk.info.c_type() {
+                Tiles => {
+                    mem[0x4000..=0x5FFF][..chunk.data.len()].copy_from_slice(&chunk.data);
+                },
+                Sprites => {
+                    mem[0x6000..=0x7FFF][..chunk.data.len()].copy_from_slice(&chunk.data);
+                },
+                Map => {
+                    mem[0x8000..=0xFF7F][..chunk.data.len()].copy_from_slice(&chunk.data);
+                }
+                Samples => {
+                    mem[0x100E4..=0x11163][..chunk.data.len()].copy_from_slice(&chunk.data);
+                },
+                Waveform => {
+                    mem[0x0FFE4..=0x100E3][..chunk.data.len()].copy_from_slice(&chunk.data);
+                },
+                Flags => {
+                    mem[0x14404..=0x14603][..chunk.data.len()].copy_from_slice(&chunk.data);
+                },
+                Music => {
+                    mem[0x13E64..=0x13FFB][..chunk.data.len()].copy_from_slice(&chunk.data);
+                },
+                Patterns => {
+                    mem[0x11164..=0x13E63][..chunk.data.len()].copy_from_slice(&chunk.data);
+                },
+                Palette => {
+                    mem[0x3FC0..=0x3FEF].copy_from_slice(&chunk.data[0..48]);
+                    if chunk.data.len() == 96 {
+                        // TODO: OVR PALETTE
+                    }
+                }
+                Code => {
+                    code = Some(std::str::from_utf8(&chunk.data).unwrap().to_string());
+                }
+                Screen => {}, // dunno??
+                Default => {},
+                _ => unimplemented!()
+            }
+        }
+        TAC70 { mem, code: code.unwrap() }
+    }
 }
 
 impl Cartridge {
