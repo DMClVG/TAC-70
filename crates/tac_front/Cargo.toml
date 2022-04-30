@@ -1,0 +1,13 @@
+[package]
+name = "tac_front"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tac_core = {path="../tac_core"}
+tac_cart = {path="../tac_cart"}
+tac_runtime = {path="../tac_runtime"}
+ggez = "0.7.0"
+rgb = "0.8.32"

@@ -11,3 +11,4 @@ members = ["crates/*"]
 [dependencies]
 tac_core = { path= "crates/tac_core" }
 tac_cart = { path= "crates/tac_cart" }
+tac_runtime = { path= "crates/tac_runtime" }
