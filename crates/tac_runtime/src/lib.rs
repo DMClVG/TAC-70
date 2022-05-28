@@ -1,11 +1,12 @@
+use std::borrow::Cow;
 use std::{error::Error, pin::Pin, cell::RefCell};
 
 use rgb::{Zeroable, RGB8, RGBA8};
 use rlua::prelude::*;
 use tac_core::TAC70;
+use bytes::*;
 
-const MAP_W: usize = 240;
-const MAP_H: usize = 136;
+use bytes::BufMut;
 
 #[derive(Clone, Copy)]
 pub struct Sprite([u8; 8 * 4]);
@@ -21,7 +22,6 @@ pub struct TAC70Runtime {
 impl TAC70Runtime {
     pub fn new(tac: TAC70) -> Result<Self, Box<dyn Error>> {
         let lua = Lua::new();
-
         Ok(Self {
             tac,
             lua,
@@ -29,75 +29,89 @@ impl TAC70Runtime {
     }
 
     pub fn step(&mut self) {
-        static mut x: f32 = 0.0;
+        self.screen().clear(0);
 
-        let a = self.get_sprite(1);
-        let b = self.get_sprite(2);
-        let c = self.get_sprite(1+16);
-        let d = self.get_sprite(2+16);
-        unsafe {
-            x += 0.2;
+        for y in 0..17 as i32 {
+            for x in 0..30 as i32 {
+                let i = self.map().get_tile(x, y).unwrap();
+                let tile = self.get_sprite(i as u16).unwrap();
+                self.screen().blit((x * 8).min(255) as u8, (y * 8).min(255) as u8, &tile, None);
+            }
         }
-        let mut screen = self.get_screen();
-        screen.clear(0);
-        screen.blit(unsafe { x as u8 }, unsafe { x as u8 }, &a, None);
-        screen.blit(unsafe { x as u8 }.wrapping_add(8), unsafe { x as u8 }, &b, None);
-        screen.blit(unsafe { x as u8 }, unsafe { x as u8 }.wrapping_add(8), &c, None);
-        screen.blit(unsafe { x as u8 }.wrapping_add(8), unsafe { x as u8 }.wrapping_add(8), &d, None);
     }
 
-    pub fn get_screen<'a>(&'a mut self) -> Screen<'a> {
-        Screen { pixels: &mut self.tac.mem[0x0000..Screen::PX_BUFFER_SIZE], palette: Palette::default() }
+    pub fn palette(&self) -> Palette {
+        Palette { mem: self.tac.mem[0x3FC0..0x3FF0].to_owned()}
     }
 
-    pub fn get_sprite(&self, id: u8) -> Sprite {
+    pub fn screen(&mut self) -> Screen {
+        let palette = self.palette().to_owned();
+        Screen { pixels: &mut self.tac.mem[0..Screen::PX_BUFFER_SIZE], palette }
+    }
+
+    pub fn map(&mut self) -> Map {
+        Map { tiles: &mut self.tac.mem[0x8000..0x8000+240*136] }
+    }
+
+    pub fn get_sprite(&self, id: u16) -> Option<Sprite> {
+        if id >= 512 { return None; } 
         let off = id as usize * 8 * 4;
-        Sprite(self.tac.mem[0x4000 + off..0x4000 + off + 8 * 4].try_into().unwrap())
+        Some(Sprite(self.tac.mem[0x4000 + off..0x4000 + off + 8 * 4].try_into().unwrap()))
     }
 }
 
 
 
-pub enum Palette {
-    OneBPP([rgb::RGB8; 2]),
-    TwoBPP([rgb::RGB8; 4]),
-    FourBPP([rgb::RGB8; 16]),
+// pub enum Palette {
+//     OneBPP([rgb::RGB8; 2]),
+//     TwoBPP([rgb::RGB8; 4]),
+//     FourBPP([rgb::RGB8; 16]),
+// }
+
+#[derive(Clone)]
+pub struct Palette {
+    mem: Vec<u8>
 }
 
-impl Default for Palette {
-    fn default() -> Self {
-        Self::FourBPP([
-            RGB8::new(0x1a, 0x1c, 0x2c),
-            RGB8::new(0x5d, 0x27, 0x5d),
-            RGB8::new(0xb1, 0x3e, 0x53),
-            RGB8::new(0xef, 0x7d, 0x57),
-            RGB8::new(0xff, 0xcd, 0x75),
-            RGB8::new(0xa7, 0xf0, 0x70),
-            RGB8::new(0x38, 0xb7, 0x64),
-            RGB8::new(0x25, 0x71, 0x79),
-            RGB8::new(0x29, 0x36, 0x6f),
-            RGB8::new(0x3b, 0x5d, 0xc9),
-            RGB8::new(0x41, 0xa6, 0xf6),
-            RGB8::new(0x73, 0xef, 0xf7),
-            RGB8::new(0xf4, 0xf4, 0xf4),
-            RGB8::new(0x94, 0xb0, 0xc2),
-            RGB8::new(0x56, 0x6c, 0x86),
-            RGB8::new(0x33, 0x3c, 0x57),
-        ])
-        // Self::OneBPP([
-        //     RGB8::new(0x1a, 0x1c, 0x2c),
-        //     RGB8::new(0x33, 0xff, 0x57),
-        // ])
-    }
+pub struct PaletteMut<'a> {
+    mem: &'a mut [u8]
 }
+
+// impl Default for Palette {
+//     fn default() -> Self {
+//         Self::FourBPP([
+//             RGB8::new(0x1a, 0x1c, 0x2c),
+//             RGB8::new(0x5d, 0x27, 0x5d),
+//             RGB8::new(0xb1, 0x3e, 0x53),
+//             RGB8::new(0xef, 0x7d, 0x57),
+//             RGB8::new(0xff, 0xcd, 0x75),
+//             RGB8::new(0xa7, 0xf0, 0x70),
+//             RGB8::new(0x38, 0xb7, 0x64),
+//             RGB8::new(0x25, 0x71, 0x79),
+//             RGB8::new(0x29, 0x36, 0x6f),
+//             RGB8::new(0x3b, 0x5d, 0xc9),
+//             RGB8::new(0x41, 0xa6, 0xf6),
+//             RGB8::new(0x73, 0xef, 0xf7),
+//             RGB8::new(0xf4, 0xf4, 0xf4),
+//             RGB8::new(0x94, 0xb0, 0xc2),
+//             RGB8::new(0x56, 0x6c, 0x86),
+//             RGB8::new(0x33, 0x3c, 0x57),
+//         ])
+//         // Self::OneBPP([
+//         //     RGB8::new(0x1a, 0x1c, 0x2c),
+//         //     RGB8::new(0x33, 0xff, 0x57),
+//         // ])
+//     }
+// }
 
 impl Palette {
     pub const fn bpp(&self) -> usize {
-        match self {
-            Self::OneBPP(_) => 1,
-            Self::TwoBPP(_) => 2,
-            Self::FourBPP(_) => 4,
-        }
+        // match self {
+        //     Self::OneBPP(_) => 1,
+        //     Self::TwoBPP(_) => 2,
+        //     Self::FourBPP(_) => 4,
+        // }
+        4
     }
 
     pub const fn mask(&self) -> u8 {
@@ -105,12 +119,31 @@ impl Palette {
     }
 
     pub fn get(&self, idx: u8) -> Option<RGB8> {
-        let idx = idx as usize;
-        match self {
-            Self::OneBPP(colors) if idx < 2 => Some(colors[idx]),
-            Self::TwoBPP(colors) if idx < 4 => Some(colors[idx]),
-            Self::FourBPP(colors) if idx < 16 => Some(colors[idx]),
-            _ => None,
+        // let idx = idx as usize;
+        // match self {
+        //     Self::OneBPP(colors) if idx < 2 => Some(colors[idx]),
+        //     Self::TwoBPP(colors) if idx < 4 => Some(colors[idx]),
+        //     Self::FourBPP(colors) if idx < 16 => Some(colors[idx]),
+        //     _ => None,
+        // }
+        // todo!();
+        Some(RGB8::new(self.mem[idx as usize*3+0],self.mem[idx as usize*3+1],self.mem[idx as usize*3+2]))
+    }
+}
+
+pub struct Map<'a> {
+    pub tiles: &'a mut [u8],
+}
+
+impl Map<'_> {
+    pub const WIDTH: usize = 240;
+    pub const HEIGHT: usize = 136;
+
+    fn get_tile(&self, x: i32, y: i32) -> Option<u8> {
+        if (0..Map::WIDTH).contains(&(x as usize)) && (0..Map::HEIGHT).contains(&(y as usize)) {
+            Some(self.tiles[x as usize + y as usize * Map::WIDTH])
+        } else {
+            None
         }
     }
 }

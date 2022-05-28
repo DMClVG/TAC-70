@@ -9,3 +9,4 @@ edition = "2021"
 rlua = "0.19.1"
 tac_core = {path="../tac_core"}
 rgb = "0.8.32"
+bytes = "1.1.0"

@@ -1,5 +1,8 @@
+use std::env;
+
 use ggez::{
-    graphics::{Color, DrawParam, window, Image, Rect},
+    conf::WindowSetup,
+    graphics::{window, Color, DrawParam, Image, Rect},
     *,
 };
 use rgb::ComponentBytes;
@@ -12,9 +15,7 @@ struct TAC {
 
 impl TAC {
     fn new(ctx: &mut Context, runtime: TAC70Runtime) -> Self {
-        Self {
-            runtime,
-        }
+        Self { runtime }
     }
 }
 
@@ -29,30 +30,39 @@ impl event::EventHandler<GameError> for TAC {
         let (width, height) = graphics::drawable_size(ctx);
         graphics::set_screen_coordinates(ctx, Rect::new(0.0, 0.0, width, height)).unwrap();
 
-
         graphics::clear(ctx, Color::from((0.0, 0.0, 0.0)));
-        let screen = self.runtime.get_screen().to_rgba();
+        let screen = self.runtime.screen().to_rgba();
         let screen = screen.as_bytes();
         let mut screen_image =
             graphics::Image::from_rgba8(ctx, Screen::WIDTH as u16, Screen::HEIGHT as u16, &screen)?;
         screen_image.set_filter(graphics::FilterMode::Nearest);
 
         let upscale = height / screen_image.height() as f32;
-        graphics::draw(ctx, &screen_image, DrawParam::new().scale([upscale, upscale]))?;
+        graphics::draw(
+            ctx,
+            &screen_image,
+            DrawParam::new().scale([upscale, upscale]),
+        )?;
         graphics::present(ctx)?;
 
         Ok(())
     }
 
-    fn resize_event(&mut self, ctx: &mut Context, width: f32, height: f32){
-    }
+    fn resize_event(&mut self, ctx: &mut Context, width: f32, height: f32) {}
 }
 
 fn main() {
-    let runtime = TAC70Runtime::new(Cartridge::load("testcart.tic").unwrap().into()).unwrap();
+    let cartridge_path = env::args().nth(1).unwrap();
+    let runtime = TAC70Runtime::new(Cartridge::load(cartridge_path).unwrap().into()).unwrap();
 
     let (mut ctx, event_loop) = ContextBuilder::new("TAC 70", "DMClVG")
-        .default_conf(conf::Conf::new())
+        .default_conf(conf::Conf {
+            window_setup: WindowSetup {
+                title: "TAC-70".to_string(),
+                vsync: true,
+                ..Default::default()
+            }, ..Default::default()
+        })
         .add_resource_path("./resources/")
         .build()
         .unwrap();

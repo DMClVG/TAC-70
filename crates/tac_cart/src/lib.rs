@@ -104,7 +104,7 @@ impl From<Cartridge> for TAC70 {
                 _ => unimplemented!()
             }
         }
-        TAC70 { mem, code: code.unwrap() }
+        TAC70::new(mem.as_ref())
     }
 }
 

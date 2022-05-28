@@ -2411,6 +2411,9 @@ dependencies = [
 [[package]]
 name = "tac_core"
 version = "0.1.0"
+dependencies = [
+ "bytes",
+]
 
 [[package]]
 name = "tac_front"
@@ -2427,6 +2430,7 @@ dependencies = [
 name = "tac_runtime"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "rgb",
  "rlua",
  "tac_core",
