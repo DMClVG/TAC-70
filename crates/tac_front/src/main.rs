@@ -21,9 +21,12 @@ impl TAC {
 }
 
 impl event::EventHandler<GameError> for TAC {
-    fn update(&mut self, _ctx: &mut Context) -> Result<(), GameError> {
-        
-        self.runtime.step().map_err(|err| GameError::EventLoopError(err.to_string()))?;
+    fn update(&mut self, ctx: &mut Context) -> Result<(), GameError> {
+        while timer::check_update_time(ctx, 60) {
+            self.runtime
+                .step()
+                .map_err(|err| GameError::EventLoopError(err.to_string()))?;
+        }
         Ok(())
     }
 
