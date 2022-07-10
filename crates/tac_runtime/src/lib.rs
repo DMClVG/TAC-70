@@ -41,7 +41,7 @@ impl TAC70Runtime {
                 i32,
                 Option<u8>,
                 Option<u32>,
-                Option<u32>,
+                Option<LuaValue>,
                 Option<u32>,
                 Option<u32>,
                 Option<u32>,
@@ -49,12 +49,16 @@ impl TAC70Runtime {
                 let tac = ctx.app_data_ref::<TAC70>().unwrap();
                 let (scale, flip, _rot, w, h) = (
                     scale.unwrap_or(1),
-                    flip.unwrap_or(0),
+                    flip.unwrap_or(LuaValue::Boolean(false)),
                     rot.unwrap_or(0),
                     w.unwrap_or(1),
                     h.unwrap_or(1),
                 );
-
+                let flip = match flip {
+                    LuaValue::Boolean(b) if b => 1,
+                    LuaValue::Integer(n) => n,
+                    _ => 0,
+                };
                 let (hflip, vflip) = (flip & 0b1 != 0, flip & 0b10 != 0);
                 for i in 0..w {
                     for j in 0..h {
