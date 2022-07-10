@@ -20,9 +20,7 @@ impl TAC70Runtime {
 
         let mget = lua.create_function(|ctx, (x, y): (i32, i32)| {
             let tac = ctx.app_data_ref::<TAC70>().unwrap();
-            tac.map()
-                .get(x, y)
-                .ok_or(LuaError::RuntimeError("MGET out of bounds".to_string()))
+            Ok(tac.map().get(x, y).unwrap_or(0))
         })?;
 
         let mset = lua.create_function(|ctx, (x, y, id): (i32, i32, u8)| {
