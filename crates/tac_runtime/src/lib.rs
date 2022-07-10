@@ -1,4 +1,4 @@
-use std::error::Error;
+use std::{error::Error, time::Instant};
 
 use mlua::prelude::*;
 use tac_core::{TAC70, PixBuf};
@@ -44,17 +44,37 @@ impl TAC70Runtime {
             Ok(tac.gamepads().player(btn / 8).btn(btn % 8))
         })?;
 
+        let pix = lua.create_function(|ctx, (x, y, pix): (usize, usize, Option<u8>)| -> LuaResult<Option<u8>> {
+            let tac = ctx.app_data_ref::<TAC70>().unwrap();
+            match pix {
+                Some(pix) => {
+                    tac.screen().set_pix(x, y, pix);
+                    Ok(None)
+                },
+                None => Ok(Some(tac.screen().get_pix(x, y)))
+            }
+        })?;
+
+        let start_time = Instant::now(); 
+        let time = lua.create_function(move |_, _: ()| {
+            Ok(start_time.elapsed().as_secs_f64() * 1000.0)
+        })?;
+
         globals.set("trace", trace)?;
         globals.set("mset", mset)?;
         globals.set("mget", mget)?;
         globals.set("cls", cls)?;
         globals.set("spr", spr)?;
         globals.set("btn", btn)?;
+        globals.set("pix", pix)?;
+        globals.set("time", time)?;
+
 
         drop(globals);
 
-        lua.load(&tac.code).exec()?;
+        let code = tac.code.clone();
         lua.set_app_data(tac);
+        lua.load(&code).exec()?;
 
         Ok(Self {
             lua_ctx: lua,
