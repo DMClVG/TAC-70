@@ -1,13 +1,15 @@
 use std::env;
 
 use ggez::{
-    conf::{WindowSetup, WindowMode},
+    conf::{FullscreenType, WindowMode, WindowSetup},
+    event::{KeyCode, KeyMods},
     graphics::{Color, DrawParam, Rect},
-    *, event::{KeyMods, KeyCode},
+    mint::{Vector2, Vector3},
+    *,
 };
 use rgb::ComponentBytes;
-use tac_core::{Screen, PixBuf};
 use tac_cart::Cartridge;
+use tac_core::{PixBuf, Screen};
 use tac_runtime::TAC70Runtime;
 
 struct TAC {
@@ -43,26 +45,36 @@ impl event::EventHandler<GameError> for TAC {
             graphics::Image::from_rgba8(ctx, Screen::WIDTH as u16, Screen::HEIGHT as u16, &screen)?;
         screen_image.set_filter(graphics::FilterMode::Nearest);
 
-        let upscale = height / screen_image.height() as f32;
+        let upscale =
+            (height / screen_image.height() as f32).min(width / screen_image.width() as f32).floor().max(1.0);
         graphics::draw(
             ctx,
             &screen_image,
-            DrawParam::new().scale([upscale, upscale]),
+            DrawParam::new()
+                .dest([
+                    ((width - screen_image.width() as f32 * upscale) / 2.0).ceil(),
+                    ((height - screen_image.height() as f32 * upscale) / 2.0).ceil(),
+                ])
+                .scale([upscale, upscale]),
         )?;
         graphics::present(ctx)?;
 
         Ok(())
     }
 
-    fn key_down_event( &mut self,
+    fn key_down_event(
+        &mut self,
         _ctx: &mut Context,
         keycode: KeyCode,
         _keymod: KeyMods,
-        repeat: bool) {
-        if repeat { return }
+        repeat: bool,
+    ) {
+        if repeat {
+            return;
+        }
         let tac = self.runtime.state();
         let gamepads = tac.gamepads();
-        
+
         match keycode {
             KeyCode::Up => gamepads.player(0).set_btn(0, true),
             KeyCode::Down => gamepads.player(0).set_btn(1, true),
@@ -76,13 +88,10 @@ impl event::EventHandler<GameError> for TAC {
         }
     }
 
-    fn key_up_event( &mut self,
-        _ctx: &mut Context,
-        keycode: KeyCode,
-        _keymod: KeyMods) {
+    fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymod: KeyMods) {
         let tac = self.runtime.state();
         let gamepads = tac.gamepads();
-        
+
         match keycode {
             KeyCode::Up => gamepads.player(0).set_btn(0, false),
             KeyCode::Down => gamepads.player(0).set_btn(1, false),
@@ -100,8 +109,6 @@ impl event::EventHandler<GameError> for TAC {
 }
 
 fn main() {
-    const SCALE: f32 = 3.0;
-
     let cartridge_path = env::args().nth(1).unwrap();
     println!("Loading {}..", &cartridge_path);
     let cart = Cartridge::load(cartridge_path).unwrap();
@@ -111,15 +118,15 @@ fn main() {
     let (mut ctx, event_loop) = ContextBuilder::new("TAC-70", "DMClVG")
         .default_conf(conf::Conf {
             window_mode: WindowMode {
-                width: 240.0 * SCALE,
-                height: 136.0 * SCALE,
+                resizable: true,
                 ..Default::default()
             },
             window_setup: WindowSetup {
                 title: "TAC-70".to_string(),
                 vsync: true,
                 ..Default::default()
-            }, ..Default::default()
+            },
+            ..Default::default()
         })
         .add_resource_path("./resources/")
         .build()
