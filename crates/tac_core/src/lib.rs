@@ -1,6 +1,5 @@
+use rgb::{RGB8, RGBA8};
 use std::cell::Cell;
-use rgb::{RGBA8, RGB8};
-
 
 #[derive(Clone)]
 pub struct Sprite([Cell<u8>; 8 * 4]);
@@ -20,17 +19,19 @@ pub trait PixBuf {
     fn set_buf(&mut self, i: usize, to: u8);
     fn get_buf(&self, i: usize) -> u8;
 
-    fn get_pix(&self, x: usize, y: usize) -> u8 {
-        assert!(x < Self::WIDTH);
-        assert!(y < Self::HEIGHT);
+    fn get_pix(&self, x: i32, y: i32) -> u8 {
+        assert!(x < Self::WIDTH as i32 && x >= 0);
+        assert!(y < Self::HEIGHT as i32 && y >= 0);
+        let (x, y) = (x as usize, y as usize);
         let i = (x + y * Self::WIDTH) * Self::BPP;
         (self.get_buf(i / 8) >> (i % 8)) & Self::MASK
     }
 
-    fn set_pix(&mut self, x: usize, y: usize, pix: u8) {
-        assert!(x < Self::WIDTH);
-        assert!(y < Self::HEIGHT);
-
+    fn set_pix(&mut self, x: i32, y: i32, pix: u8) {
+        if x < 0 || x >= Self::WIDTH as i32 || y < 0 || y >= Self::HEIGHT as i32  {
+            return;
+        }
+        let (x, y) = (x as usize, y as usize);
         const MASK: u8 = pix_mask(4);
         let bit = (x + y * Self::WIDTH) * 4;
         let off = bit % 8;
@@ -40,14 +41,42 @@ pub trait PixBuf {
         self.set_buf(bit / 8, byte);
     }
 
-    fn blit<O: PixBuf>(&mut self, x: i32, y: i32, spr: &O, alpha: Option<u8>) {
-        for i in x.min(0).abs() as usize..O::WIDTH.min((Self::WIDTH as isize - x.max(0) as isize).max(0) as usize) {
-            for j in y.min(0).abs() as usize..O::HEIGHT.min((Self::HEIGHT as isize - y.max(0) as isize).max(0)  as usize) {
-                let spr_pix = spr.get_pix(i,j);
+    fn blit<O: PixBuf>(
+        &mut self,
+        x: i32,
+        y: i32,
+        spr: &O,
+        alpha: Option<u8>,
+        hflip: bool,
+        vflip: bool,
+        scale: u32,
+    ) {
+        if scale == 0 {
+            return;
+        }
+        let scale = scale as usize;
+        for i in 0..O::WIDTH
+        {
+            for j in 0..O::HEIGHT
+            {
+                let spr_pix = spr.get_pix(
+                    if hflip { O::WIDTH - i - 1 } else { i } as i32,
+                    if vflip { O::HEIGHT - j - 1 } else { j } as i32,
+                );
 
-                if Some(spr_pix) == alpha { continue; }
+                if Some(spr_pix) == alpha {
+                    continue;
+                }
 
-                self.set_pix((x+i as i32).max(0) as usize, (y+j as i32).max(0) as usize, spr_pix);
+                for l in 0..scale {
+                    for m in 0..scale {
+                        self.set_pix(
+                            x + (i*scale+l) as i32,
+                            y + (j*scale+m) as i32,
+                            spr_pix,
+                        );
+                    }
+                }
             }
         }
     }
@@ -55,7 +84,7 @@ pub trait PixBuf {
     fn clear(&mut self, pix: u8) {
         for i in 0..Self::WIDTH {
             for j in 0..Self::HEIGHT {
-                self.set_pix(i, j, pix);
+                self.set_pix(i as i32, j as i32, pix);
             }
         }
     }
@@ -66,7 +95,7 @@ pub trait PixBuf {
         let mut out = Vec::with_capacity(Self::WIDTH * Self::HEIGHT);
         for j in 0..Self::HEIGHT {
             for i in 0..Self::WIDTH {
-                let pix = self.get_pix(i, j);
+                let pix = self.get_pix(i as i32, j as i32);
                 out.push(palette.get(pix).unwrap().alpha(255));
             }
         }
@@ -87,8 +116,12 @@ pub struct TAC70 {
 
 impl TAC70 {
     pub fn new(mem: &[u8], code: String) -> Self {
-        let mem = mem.into_iter().cloned().map(|b| Cell::new(b)).collect::<Vec<Cell<u8>>>();
-        
+        let mem = mem
+            .into_iter()
+            .cloned()
+            .map(|b| Cell::new(b))
+            .collect::<Vec<Cell<u8>>>();
+
         Self {
             mem: mem.try_into().unwrap(),
             code,
@@ -96,30 +129,41 @@ impl TAC70 {
     }
 
     pub fn palette(&self) -> Palette {
-        Palette { mem: &self.mem[0x3FC0..0x3FF0] }
+        Palette {
+            mem: &self.mem[0x3FC0..0x3FF0],
+        }
     }
 
     pub fn screen(&self) -> Screen {
         let palette = self.palette().to_owned();
-        Screen { pixels: &self.mem[0.. Screen::PX_BUFFER_SIZE], palette }
+        Screen {
+            pixels: &self.mem[0..Screen::PX_BUFFER_SIZE],
+            palette,
+        }
     }
 
     pub fn map(&self) -> Map {
-        Map { tiles: &self.mem[0x8000.. 0x8000+Map::WIDTH*Map::HEIGHT] }
+        Map {
+            tiles: &self.mem[0x8000..0x8000 + Map::WIDTH * Map::HEIGHT],
+        }
     }
 
     pub fn sprite(&self, id: u16) -> Option<Sprite> {
-        if id >= 512 { return None; } 
+        if id >= 512 {
+            return None;
+        }
         let off = id as usize * 8 * 4;
         let mut spr = vec![Cell::new(0); 32];
         for i in 0..32 {
-            spr[i] = self.mem[0x4000 + off + i].clone(); 
+            spr[i] = self.mem[0x4000 + off + i].clone();
         }
         Some(Sprite(spr.try_into().unwrap()))
     }
 
     pub fn gamepads(&self) -> Gamepads {
-        Gamepads { mem: &self.mem[0x0FF80..0x0FF80+4] }
+        Gamepads {
+            mem: &self.mem[0x0FF80..0x0FF80 + 4],
+        }
     }
 
     pub fn set_sprite(&mut self, id: u16, spr: Sprite) {
@@ -130,16 +174,18 @@ impl TAC70 {
 }
 
 pub struct Gamepads<'a> {
-    mem: &'a [Cell<u8>]
+    mem: &'a [Cell<u8>],
 }
 
 pub struct Gamepad<'a> {
-    byte: &'a Cell<u8>
+    byte: &'a Cell<u8>,
 }
 
 impl<'a> Gamepads<'a> {
     pub fn player(&self, id: u8) -> Gamepad {
-        Gamepad { byte:  &self.mem[id as usize] }
+        Gamepad {
+            byte: &self.mem[id as usize],
+        }
     }
 }
 
@@ -165,7 +211,7 @@ impl<'a> Gamepad<'a> {
 
 #[derive(Clone)]
 pub struct Palette<'a> {
-    mem: &'a [Cell<u8>]
+    mem: &'a [Cell<u8>],
 }
 
 impl Palette<'_> {
@@ -174,7 +220,11 @@ impl Palette<'_> {
     }
 
     pub fn get(&self, idx: u8) -> Option<RGB8> {
-        Some(RGB8::new(self.mem[idx as usize*3+0].get(),self.mem[idx as usize*3+1].get(),self.mem[idx as usize*3+2].get()))
+        Some(RGB8::new(
+            self.mem[idx as usize * 3 + 0].get(),
+            self.mem[idx as usize * 3 + 1].get(),
+            self.mem[idx as usize * 3 + 2].get(),
+        ))
     }
 }
 
@@ -211,17 +261,25 @@ impl PixBuf for Screen<'_> {
     const HEIGHT: usize = 136;
     const BPP: usize = 4;
 
-    fn set_buf(&mut self, i: usize, to: u8) { self.pixels[i].set(to) }
-    fn get_buf(&self, i: usize) -> u8 { self.pixels[i].get() }
+    fn set_buf(&mut self, i: usize, to: u8) {
+        self.pixels[i].set(to)
+    }
+    fn get_buf(&self, i: usize) -> u8 {
+        self.pixels[i].get()
+    }
 }
 
 impl PixBuf for Sprite {
     const WIDTH: usize = 8;
     const HEIGHT: usize = 8;
     const BPP: usize = 4;
-    
-    fn set_buf(&mut self, i: usize, to: u8) { self.0[i].set(to) }
-    fn get_buf(&self, i: usize) -> u8 { self.0[i].get() }
+
+    fn set_buf(&mut self, i: usize, to: u8) {
+        self.0[i].set(to)
+    }
+    fn get_buf(&self, i: usize) -> u8 {
+        self.0[i].get()
+    }
 }
 
 impl Screen<'_> {
