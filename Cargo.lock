@@ -1452,6 +1452,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "mlua"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a82d0b12c7c8d3bdda5933d2aa322c76e4833d822796495f299990ca652bd1bf"
+dependencies = [
+ "bstr",
+ "cc",
+ "num-traits",
+ "once_cell",
+ "pkg-config",
+ "rustc-hash",
+]
+
+[[package]]
 name = "modular-bitfield"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2042,30 +2056,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rlua"
-version = "0.19.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "627ae78424400009e889c43b0c188d0b7af3fe7301b68c03d9cfacb29115408a"
-dependencies = [
- "bitflags",
- "bstr",
- "libc",
- "num-traits",
- "rlua-lua54-sys",
-]
-
-[[package]]
-name = "rlua-lua54-sys"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4e1fdfc6a5f7acfa1b1fe26c5076b54f5ebd6818b5982460c39844c8b859370"
-dependencies = [
- "cc",
- "libc",
- "pkg-config",
-]
-
-[[package]]
 name = "rodio"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2413,6 +2403,7 @@ name = "tac_core"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "rgb",
 ]
 
 [[package]]
@@ -2430,9 +2421,7 @@ dependencies = [
 name = "tac_runtime"
 version = "0.1.0"
 dependencies = [
- "bytes",
- "rgb",
- "rlua",
+ "mlua",
  "tac_core",
 ]
 

@@ -6,7 +6,5 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rlua = "0.19.1"
+mlua = { version = "0.8.1", features = ["lua53"] }
 tac_core = {path="../tac_core"}
-rgb = "0.8.32"
-bytes = "1.1.0"

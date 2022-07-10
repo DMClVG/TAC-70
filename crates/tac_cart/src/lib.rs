@@ -1,4 +1,4 @@
-use std::{u8, io::Cursor, error::Error, path::{PathBuf, Path}, fmt::Debug};
+use std::{u8, io::Cursor, error::Error, path::Path, fmt::Debug};
 
 use binread::prelude::*;
 use modular_bitfield::prelude::*;
@@ -47,7 +47,7 @@ struct Chunk {
     #[br(little)]
     size: u16,
 
-    reserved: u8,
+    _reserved: u8,
 
     #[br(count=size)]
     data: Vec<u8>,
@@ -104,7 +104,7 @@ impl From<Cartridge> for TAC70 {
                 _ => unimplemented!()
             }
         }
-        TAC70::new(mem.as_ref())
+        TAC70::new(mem.as_ref(), code.unwrap())
     }
 }
 
