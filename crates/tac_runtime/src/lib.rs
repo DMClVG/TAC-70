@@ -41,15 +41,14 @@ impl TAC70Runtime {
                 i32,
                 Option<u8>,
                 Option<u32>,
-                Option<LuaValue>,
+                LuaValue,
                 Option<u32>,
                 Option<u32>,
                 Option<u32>,
             )| {
                 let tac = ctx.app_data_ref::<TAC70>().unwrap();
-                let (scale, flip, _rot, w, h) = (
+                let (scale, _rot, w, h) = (
                     scale.unwrap_or(1),
-                    flip.unwrap_or(LuaValue::Boolean(false)),
                     rot.unwrap_or(0),
                     w.unwrap_or(1),
                     h.unwrap_or(1),
@@ -107,7 +106,7 @@ impl TAC70Runtime {
                 Option<i32>,
                 Option<i32>,
                 Option<u8>,
-                Option<i32>,
+                Option<u32>,
                 Option<LuaFunction>,
             )| {
                 let tac = ctx.app_data_ref::<TAC70>().unwrap();
@@ -119,14 +118,14 @@ impl TAC70Runtime {
                     sx.unwrap_or(0),
                     sy.unwrap_or(0),
                 );
-                let _scale = scale.unwrap_or(1); // TODO: use scale
+                let scale = scale.unwrap_or(1); // TODO: use scale
                 for i in 0..w {
                     for j in 0..h {
                         let (spr_id, flip, _rotate) = {
                             match &remap {
                                 None => (
                                     tac.map().get(x + i, y + j).unwrap() as u16,
-                                    Option::<i32>::None,
+                                    LuaValue::Nil,
                                     Option::<i32>::None,
                                 ),
                                 Some(f) => f.call::<_, _>((
@@ -136,14 +135,20 @@ impl TAC70Runtime {
                                 ))?,
                             }
                         };
+
+                        let flip = match flip {
+                            LuaValue::Boolean(b) if b => 1,
+                            LuaValue::Integer(n) => n,
+                            _ => 0,
+                        };
                         tac.screen().blit(
-                            sx + i * 8,
-                            sy + j * 8,
+                            sx + i * 8 * scale as i32,
+                            sy + j * 8 * scale as i32,
                             &tac.sprite(spr_id).unwrap(),
                             alpha,
-                            flip.unwrap_or(0) & 0b1 != 0,
-                            flip.unwrap_or(0) & 0b10 != 0,
-                            1,
+                            flip & 0b1 != 0,
+                            flip & 0b10 != 0,
+                            scale,
                         );
                     }
                 }
