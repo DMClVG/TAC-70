@@ -33,6 +33,18 @@ impl TAC70Runtime {
             Ok(tac.screen().clear(pix))
         })?;
 
+        let rect = lua.create_function(|ctx, (x, y, w, h, pix): (i32, i32, u32, u32, u8)| {
+            let tac = ctx.app_data_ref::<TAC70>().unwrap();
+            tac.screen().rect(x, y, w, h, pix);
+            Ok(())
+        })?;
+
+        let rectb = lua.create_function(|ctx, (x, y, w, h, pix): (i32, i32, u32, u32, u8)| {
+            let tac = ctx.app_data_ref::<TAC70>().unwrap();
+            tac.screen().rectb(x, y, w, h, pix);
+            Ok(())
+        })?;
+
         let spr = lua.create_function(
             |ctx,
              (id, x, y, alpha, scale, flip, rot, w, h): (
@@ -169,6 +181,9 @@ impl TAC70Runtime {
         globals.set("pix", pix)?;
         globals.set("time", time)?;
         globals.set("map", map)?;
+        globals.set("rect", rect)?;
+        globals.set("rectb", rectb)?;
+
 
         drop(globals);
 

@@ -28,7 +28,7 @@ pub trait PixBuf {
     }
 
     fn set_pix(&mut self, x: i32, y: i32, pix: u8) {
-        if x < 0 || x >= Self::WIDTH as i32 || y < 0 || y >= Self::HEIGHT as i32  {
+        if x < 0 || x >= Self::WIDTH as i32 || y < 0 || y >= Self::HEIGHT as i32 {
             return;
         }
         let (x, y) = (x as usize, y as usize);
@@ -55,10 +55,8 @@ pub trait PixBuf {
             return;
         }
         let scale = scale as usize;
-        for i in 0..O::WIDTH
-        {
-            for j in 0..O::HEIGHT
-            {
+        for i in 0..O::WIDTH {
+            for j in 0..O::HEIGHT {
                 let spr_pix = spr.get_pix(
                     if hflip { O::WIDTH - i - 1 } else { i } as i32,
                     if vflip { O::HEIGHT - j - 1 } else { j } as i32,
@@ -71,8 +69,8 @@ pub trait PixBuf {
                 for l in 0..scale {
                     for m in 0..scale {
                         self.set_pix(
-                            x + (i*scale+l) as i32,
-                            y + (j*scale+m) as i32,
+                            x + (i * scale + l) as i32,
+                            y + (j * scale + m) as i32,
                             spr_pix,
                         );
                     }
@@ -88,6 +86,30 @@ pub trait PixBuf {
             }
         }
     }
+
+    fn rect(&mut self, x: i32, y: i32, w: u32, h: u32, pix: u8) {
+        if w == 0 || h == 0 { return }
+        for i in 0..w as i32 {
+            for j in 0..h as i32 {
+                self.set_pix(x + i, y + j, pix);
+            }
+        }
+    }
+
+    fn rectb(&mut self, x: i32, y: i32, w: u32, h: u32, pix: u8) {
+        if w == 0 || h == 0 { return }
+        let (w, h) = (w as i32, h as i32);
+        for i in 0..w {
+            self.set_pix(x + i, y, pix);
+            self.set_pix(x + i, y + h - 1, pix);
+        }
+        for j in 0..h-1 {
+            self.set_pix(x, y + j, pix);
+            self.set_pix(x + w - 1, y + j, pix);
+        }
+    }
+
+    fn line(&mut self, ax: i32, ay: i32, bx: i32, by: i32, pix: u8) {}
 
     ///
     /// Returns vec of size WIDTH*HEIGHT
