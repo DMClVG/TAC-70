@@ -5,7 +5,7 @@ use std::cell::Cell;
 pub struct Sprite([Cell<u8>; 8 * 4]);
 
 #[derive(Clone)]
-pub struct Font([Cell<u8>; 8]);
+pub struct FontChar([Cell<u8>; 8]);
 
 pub trait PixBuf {
     const WIDTH: usize;
@@ -32,11 +32,10 @@ pub trait PixBuf {
             return;
         }
         let (x, y) = (x as usize, y as usize);
-        const MASK: u8 = pix_mask(4);
         let bit = (x + y * Self::WIDTH) * 4;
         let off = bit % 8;
         let mut byte = self.get_buf(bit / 8);
-        byte &= !(MASK << off);
+        byte &= !(Self::MASK << off);
         byte |= pix << off;
         self.set_buf(bit / 8, byte);
     }
@@ -138,9 +137,12 @@ pub struct TAC70 {
 
 impl TAC70 {
     pub fn new(mem: &[u8], code: String) -> Self {
+
+        let mut mem = mem.to_owned();
+        mem[0x14604..0x14604+8*127*2].copy_from_slice(include_bytes!("font.bin"));
+
         let mem = mem
             .into_iter()
-            .cloned()
             .map(|b| Cell::new(b))
             .collect::<Vec<Cell<u8>>>();
 
@@ -185,6 +187,19 @@ impl TAC70 {
     pub fn gamepads(&self) -> Gamepads {
         Gamepads {
             mem: &self.mem[0x0FF80..0x0FF80 + 4],
+        }
+    }
+
+    pub fn char(&self, c: char, alt: bool) -> Option<FontChar> {
+        if (0..128).contains(&(c as u32)) {
+            let off = c as usize * 8 + if alt { 8*127 } else { 0 };
+            let mut font = vec![Cell::new(0); 8];
+            for i in 0..8 {
+                font[i] = self.mem[0x14604 + off + i].clone();
+            }
+            Some(FontChar(font.try_into().unwrap()))
+        } else {
+            None
         }
     }
 
@@ -301,6 +316,49 @@ impl PixBuf for Sprite {
     }
     fn get_buf(&self, i: usize) -> u8 {
         self.0[i].get()
+    }
+}
+
+impl PixBuf for FontChar {
+    const WIDTH: usize = 8;
+    const HEIGHT: usize = 8;
+    const BPP: usize = 1;
+
+    fn set_buf(&mut self, i: usize, to: u8) {
+        self.0[i].set(to)
+    }
+    fn get_buf(&self, i: usize) -> u8 {
+        self.0[i].get()
+    }
+}
+
+pub struct Colorized<T: PixBuf>(pub u8, pub T);
+
+impl<T: PixBuf> PixBuf for Colorized<T> {
+    const WIDTH: usize = T::WIDTH;
+    const HEIGHT: usize = T::HEIGHT;
+
+    const BPP: usize = T::BPP;
+
+    const MASK: u8 = pix_mask(Self::BPP);
+
+    fn get_pix(&self, x: i32, y: i32) -> u8 {
+        match self.1.get_pix(x, y) {
+            0 => 0,
+            _ => self.0
+        } 
+    }
+
+    fn set_pix(&mut self, _x: i32, _y: i32, _pix: u8) {
+        unimplemented!()
+    }
+
+    fn set_buf(&mut self, _i: usize, _to: u8) {
+        unimplemented!()
+    }
+
+    fn get_buf(&self, _i: usize) -> u8 {
+        unimplemented!()
     }
 }
 

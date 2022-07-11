@@ -48,6 +48,41 @@ impl TAC70Runtime {
             Ok(())
         })?;
 
+        let print = lua.create_function(
+            |ctx,
+             (s, x, y, pix, fixed, scale, smallfont): (
+                String,
+                i32,
+                i32,
+                Option<u8>,
+                Option<bool>,
+                Option<u32>,
+                Option<bool>,
+            )| {
+                let tac = ctx.app_data_ref::<TAC70>().unwrap();
+                let (pix, _fixed, scale, smallfont) = (
+                    pix.unwrap_or(15),
+                    fixed.unwrap_or(false),
+                    scale.unwrap_or(1),
+                    smallfont.unwrap_or(false),
+                );
+
+                let spacing = if !smallfont { 6 } else { 4 };
+                for (i, c) in s.chars().enumerate() {
+                    tac.screen().blit(
+                        x + (i * spacing) as i32 * scale as i32,
+                        y,
+                        &Colorized(pix, tac.char(c, smallfont).unwrap()),
+                        Some(0),
+                        false,
+                        false,
+                        scale,
+                    );
+                }
+                Ok(())
+            },
+        )?;
+
         let spr = lua.create_function(
             |ctx,
              (id, x, y, alpha, scale, flip, rot, w, h): (
@@ -186,7 +221,7 @@ impl TAC70Runtime {
         globals.set("map", map)?;
         globals.set("rect", rect)?;
         globals.set("rectb", rectb)?;
-
+        globals.set("print", print)?;
 
         drop(globals);
 
