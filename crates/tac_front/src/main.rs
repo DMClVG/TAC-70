@@ -46,8 +46,10 @@ impl event::EventHandler<GameError> for TAC {
             graphics::Image::from_rgba8(ctx, Screen::WIDTH as u16, Screen::HEIGHT as u16, &screen)?;
         screen_image.set_filter(graphics::FilterMode::Nearest);
 
-        let upscale =
-            (height / screen_image.height() as f32).min(width / screen_image.width() as f32).floor().max(1.0);
+        let upscale = (height / screen_image.height() as f32)
+            .min(width / screen_image.width() as f32)
+            .floor()
+            .max(1.0);
         graphics::draw(
             ctx,
             &screen_image,
