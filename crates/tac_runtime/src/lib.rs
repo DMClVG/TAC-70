@@ -198,11 +198,9 @@ impl TAC70Runtime {
     }
 
     pub fn boot(&mut self) -> LuaResult<()> {
-        self.lua_ctx
-            .globals()
-            .get::<_, LuaFunction>("BOOT")
-            .unwrap()
-            .call::<_, ()>(())?;
+        if let Ok(f) = self.lua_ctx.globals().get::<_, LuaFunction>("BOOT") {
+            f.call::<_, _>(())?;
+        }
         Ok(())
     }
 
