@@ -17,7 +17,8 @@ struct TAC {
 }
 
 impl TAC {
-    fn new(_ctx: &mut Context, runtime: TAC70Runtime) -> Self {
+    fn new(_ctx: &mut Context, mut runtime: TAC70Runtime) -> Self {
+        runtime.boot().unwrap();
         Self { runtime }
     }
 }
