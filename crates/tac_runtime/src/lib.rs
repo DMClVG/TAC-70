@@ -9,7 +9,10 @@ pub struct TAC70Runtime {
 
 impl TAC70Runtime {
     pub fn new(tac: TAC70) -> Result<Self, Box<dyn Error>> {
-        let lua = Lua::new();
+        let lua = Lua::new_with(
+            LuaStdLib::NONE | LuaStdLib::TABLE | LuaStdLib::STRING | LuaStdLib::MATH | LuaStdLib::UTF8,
+            LuaOptions::new(),
+        )?;
 
         let globals = lua.globals();
 
