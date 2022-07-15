@@ -217,6 +217,10 @@ impl TAC70 {
         }
     }
 
+    pub fn mouse(&self) -> Mouse {
+        Mouse { mem: self.mem[0x0FF84..0x0FF84+4].try_into().unwrap() }
+    }
+
     pub fn set_sprite(&mut self, id: u16, spr: Sprite) {
         assert!(id < 512);
         let off = id as usize * 8 * 4;
@@ -265,6 +269,58 @@ pub struct Gamepads<'a> {
 
 pub struct Gamepad<'a> {
     byte: &'a Cell<u8>,
+}
+
+pub struct Mouse<'a> {
+    mem: &'a [Cell<u8>; 4]
+}
+
+impl Mouse<'_> {
+    pub fn set(&self, mx: u8, my: u8, ml: bool, mm: bool, mr: bool, scrollx: i8, scrolly: i8) {
+        assert!(scrollx > -33 && scrollx < 32);
+        assert!(scrolly > -33 && scrolly < 32);
+
+        let mut dword: u32 = (mx as u32) | (my as u32) << 8;
+        if ml {
+            dword |= 0b1 << 16;
+        }
+        if mm {
+            dword |= 0b10 << 16;
+        }
+        if mr {
+            dword |= 0b100 << 16;
+        }
+        dword |= (scrollx as u8 as u32 & 0b111111) << 19;
+        dword |= (scrolly as u8 as u32 & 0b111111) << 25;
+
+        let m = &self.mem;
+        m[0].set((dword & 0xFF) as u8);
+        m[1].set(((dword >> 8) & 0xFF) as u8);
+        m[2].set(((dword >> 16) & 0xFF) as u8);
+        m[3].set(((dword >> 24) & 0xFF) as u8);
+    }
+
+    pub fn pos(&self) -> (i32, i32) {
+        (self.mem[0].get() as i32, self.mem[1].get() as i32)
+    }
+
+    pub fn buttons(&self) -> (bool, bool, bool) {
+        let buttons = self.mem[2].get();
+        (
+            buttons & 0b1 != 0,
+            buttons & 0b10 != 0,
+            buttons & 0b100 != 0
+        )
+    }
+
+    pub fn scrolly(&self) -> i32 {
+        (((((self.mem[3].get() >> 1) & 0b111111) << 2) as i8) >> 2) as i32
+    }
+
+    pub fn scrollx(&self) -> i32 {
+        let i6 = ((self.mem[2].get() >> 3) & 0b11111) | (self.mem[3].get() & 0b1) << 5;
+        (((i6 << 2) as i8) >> 2) as i32
+    }
 }
 
 impl<'a> Gamepads<'a> {

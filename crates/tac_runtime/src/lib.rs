@@ -142,6 +142,17 @@ impl TAC70Runtime {
             Ok(tac.gamepads().player(btn / 8).btn(btn % 8))
         })?;
 
+        let mouse = lua.create_function(|ctx, ()| {
+            let tac = ctx.app_data_ref::<TAC70>().unwrap();
+            let mouse = tac.mouse();
+            let (mx, my) = mouse.pos();
+            let (ml, mm, mr) = mouse.buttons();
+            let scrollx = mouse.scrollx();
+            let scrolly = mouse.scrolly();
+
+            Ok((mx, my, ml, mm, mr, scrollx, scrolly))
+        })?;
+
         let pix = lua.create_function(
             |ctx, (x, y, pix): (i32, i32, Option<u8>)| -> LuaResult<Option<u8>> {
                 let tac = ctx.app_data_ref::<TAC70>().unwrap();
@@ -231,6 +242,7 @@ impl TAC70Runtime {
         globals.set("rect", rect)?;
         globals.set("rectb", rectb)?;
         globals.set("print", print)?;
+        globals.set("mouse", mouse)?;
 
         drop(globals);
 

@@ -2,7 +2,7 @@ use std::env;
 
 use rgb::ComponentBytes;
 use tac_cart::Cartridge;
-use tac_core::{PixBuf, Screen, Gamepads};
+use tac_core::{Gamepads, PixBuf, Screen};
 use tac_runtime::TAC70Runtime;
 
 use macroquad::prelude::*;
@@ -18,6 +18,18 @@ async fn main() {
     loop {
         runtime.step().unwrap();
 
+        let (width, height) = (screen_width(), screen_height());
+
+        let upscale = (height / Screen::HEIGHT as f32)
+            .min(width / Screen::WIDTH as f32)
+            .floor()
+            .max(1.0);
+
+        let (offx, offy) = (
+            ((width - Screen::WIDTH as f32 * upscale) / 2.0).ceil(),
+            ((height - Screen::HEIGHT as f32 * upscale) / 2.0).ceil()
+        );
+
         let state = runtime.state();
         let gamepads = state.gamepads();
 
@@ -30,28 +42,47 @@ async fn main() {
         gamepads.player(0).set_btn(6, is_key_down(KeyCode::A));
         gamepads.player(0).set_btn(7, is_key_down(KeyCode::S));
 
-        clear_background(BLACK);
+        let (mx, my) = mouse_position();
+        let (ml, mm, mr) = (
+            is_mouse_button_down(MouseButton::Left),
+            is_mouse_button_down(MouseButton::Middle),
+            is_mouse_button_down(MouseButton::Right),
+        );
+        let (scrollx, scrolly) = mouse_wheel();
+        dbg!((scrollx, scrolly));
+        let (mx, my) = (
+            ((mx - offx) / upscale).max(0.0) as u8,
+            ((my - offy) / upscale).max(0.0) as u8
+        );
+
+        state.mouse().set(
+            mx,
+            my,
+            ml,
+            mm,
+            mr,
+            scrollx.round() as i8,
+            scrolly.round() as i8
+        );
 
         // ==== DRAW ====
+        clear_background(BLACK);
+
         let screen = state.screen().to_rgba(&state.palette());
         let screen = screen.as_bytes();
-
-        let (width, height) = (screen_width(), screen_height());
-
-        let upscale = (height / Screen::HEIGHT as f32)
-            .min(width / Screen::WIDTH as f32)
-            .floor()
-            .max(1.0);
 
         let tex = Texture2D::from_rgba8(Screen::WIDTH as u16, Screen::HEIGHT as u16, screen);
         tex.set_filter(FilterMode::Nearest);
         draw_texture_ex(
             tex,
-            ((width - Screen::WIDTH as f32 * upscale) / 2.0).ceil(),
-            ((height - Screen::HEIGHT as f32 * upscale) / 2.0).ceil(),
+            offx,
+            offy,
             WHITE,
             DrawTextureParams {
-                dest_size: Some(Vec2::new(Screen::WIDTH as f32 * upscale, Screen::HEIGHT as f32 * upscale)),
+                dest_size: Some(Vec2::new(
+                    Screen::WIDTH as f32 * upscale,
+                    Screen::HEIGHT as f32 * upscale,
+                )),
                 ..Default::default()
             },
         );
