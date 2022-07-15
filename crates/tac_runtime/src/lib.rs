@@ -64,26 +64,31 @@ impl TAC70Runtime {
                 Option<bool>,
             )| {
                 let tac = ctx.app_data_ref::<TAC70>().unwrap();
-                let (pix, _fixed, scale, smallfont) = (
+                let (pix, fixed, scale, smallfont) = (
                     pix.unwrap_or(15),
                     fixed.unwrap_or(false),
                     scale.unwrap_or(1),
                     smallfont.unwrap_or(false),
                 );
 
-                let spacing = if !smallfont { 6 } else { 4 };
-                for (i, c) in s.chars().enumerate() {
+                
+                let mut cursor = 0;
+                let fixedw = if smallfont { 3 } else { 5 }; 
+                for c in s.chars() {
+                    let fchar = tac.char(c, smallfont).unwrap();
+                    let advance = if !fixed { fchar.width as i32 } else { fixedw } + 1;
                     tac.screen().blit(
-                        x + (i * spacing) as i32 * scale as i32,
+                        x + (cursor - if !fixed { fchar.padx } else { 0 }) * scale as i32,
                         y,
-                        &Colorized(pix, tac.char(c, smallfont).unwrap()),
+                        &Colorized(pix, fchar),
                         Some(0),
                         false,
                         false,
                         scale,
                     );
+                    cursor += advance;
                 }
-                Ok(())
+                Ok(cursor) // return width
             },
         )?;
 

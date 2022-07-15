@@ -5,7 +5,11 @@ use std::cell::Cell;
 pub struct Sprite([Cell<u8>; 8 * 4]);
 
 #[derive(Clone)]
-pub struct FontChar([Cell<u8>; 8]);
+pub struct FontChar { 
+    mem: [Cell<u8>; 8],
+    pub width: u32,
+    pub padx: i32,
+}
 
 pub trait PixBuf {
     const WIDTH: usize;
@@ -133,23 +137,31 @@ const fn pix_mask(bpp: usize) -> u8 {
 pub struct TAC70 {
     pub mem: [Cell<u8>; 0x18000],
     pub code: String,
+    pub char_cache: [(u32, i32); Self::CHAR_COUNT]
 }
 
 impl TAC70 {
+    const CHAR_COUNT: usize = 127 * 2;
+
     pub fn new(mem: &[u8], code: String) -> Self {
 
         let mut mem = mem.to_owned();
-        mem[0x14604..0x14604+8*127*2].copy_from_slice(include_bytes!("font.bin"));
+        mem[0x14604..0x14604+8*Self::CHAR_COUNT].copy_from_slice(include_bytes!("font.bin")); // Load font to memory
 
         let mem = mem
             .into_iter()
             .map(|b| Cell::new(b))
             .collect::<Vec<Cell<u8>>>();
 
-        Self {
+
+        let mut tac = Self {
             mem: mem.try_into().unwrap(),
             code,
-        }
+            char_cache: [(0,0); Self::CHAR_COUNT]
+        };
+        tac.update_font_data();
+
+        tac
     }
 
     pub fn palette(&self) -> Palette {
@@ -191,13 +203,15 @@ impl TAC70 {
     }
 
     pub fn char(&self, c: char, alt: bool) -> Option<FontChar> {
-        if (0..128).contains(&(c as u32)) {
-            let off = c as usize * 8 + if alt { 8*127 } else { 0 };
+        let c = c as usize;
+        if (0..128).contains(&c) {
+            let ccode = c as usize + if alt { 127 } else { 0 };
+            let off = ccode * 8;
             let mut font = vec![Cell::new(0); 8];
             for i in 0..8 {
                 font[i] = self.mem[0x14604 + off + i].clone();
             }
-            Some(FontChar(font.try_into().unwrap()))
+            Some(FontChar { mem: font.try_into().unwrap(), width: self.char_cache[ccode].0, padx: self.char_cache[ccode].1 } )
         } else {
             None
         }
@@ -207,6 +221,41 @@ impl TAC70 {
         assert!(id < 512);
         let off = id as usize * 8 * 4;
         self.mem[0x400 + off..0x4000 + off * 8 * 4].clone_from_slice(&spr.0);
+    }
+
+    pub fn update_font_data(&mut self) {
+        for c in 0..127 {
+            for alt in [false, true] {
+                let ccode = c as usize + if !alt { 0 } else { 127 };
+                if c == ' ' as u8 {
+                    self.char_cache[ccode] = (if alt { 1 } else { 3 }, 0);
+                    continue;
+                }
+
+                let fchar = self.char(c as u8 as char, alt).unwrap();
+
+                let mut padr = 8;
+                'col1: for i in (0..FontChar::WIDTH as i32).rev() {
+                    for j in 0..FontChar::HEIGHT as i32 {
+                        if fchar.get_pix(i, j) != 0 {
+                            padr = 7-i;
+                            break 'col1;
+                        }
+                    }
+                }
+                let mut padl = 0;
+                'col2: for i in 0..FontChar::WIDTH as i32 {
+                    for j in 0..FontChar::HEIGHT as i32 {
+                        if fchar.get_pix(i, j) != 0 {
+                            padl = i;
+                            break 'col2;
+                        }
+                    }
+                }
+                let width = 8 - padr - padl;
+                self.char_cache[ccode] = (width.max(0) as u32, padl);
+            } 
+        }
     }
 }
 
@@ -325,10 +374,10 @@ impl PixBuf for FontChar {
     const BPP: usize = 1;
 
     fn set_buf(&mut self, i: usize, to: u8) {
-        self.0[i].set(to)
+        self.mem[i].set(to)
     }
     fn get_buf(&self, i: usize) -> u8 {
-        self.0[i].get()
+        self.mem[i].get()
     }
 }
 
