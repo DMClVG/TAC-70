@@ -35,9 +35,9 @@ impl TAC70Runtime {
             Ok(tac.map().set(x, y, id))
         })?;
 
-        let cls = lua.create_function(|ctx, pix: u8| {
+        let cls = lua.create_function(|ctx, pix: Option<u8>| {
             let tac = ctx.app_data_ref::<TAC70>().unwrap();
-            Ok(tac.screen().clear(pix))
+            Ok(tac.screen().clear(pix.unwrap_or(0)))
         })?;
 
         let rect = lua.create_function(|ctx, (x, y, w, h, pix): (i32, i32, u32, u32, u8)| {
