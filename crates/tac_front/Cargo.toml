@@ -9,5 +9,5 @@ edition = "2021"
 tac_core = {path="../tac_core"}
 tac_cart = {path="../tac_cart"}
 tac_runtime = {path="../tac_runtime"}
-ggez = "0.7.0"
+macroquad = "0.3"
 rgb = "0.8.32"
