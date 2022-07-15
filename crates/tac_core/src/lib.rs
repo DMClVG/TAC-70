@@ -5,7 +5,7 @@ use std::cell::Cell;
 pub struct Sprite([Cell<u8>; 8 * 4]);
 
 #[derive(Clone)]
-pub struct FontChar { 
+pub struct FontChar {
     mem: [Cell<u8>; 8],
     pub width: u32,
     pub padx: i32,
@@ -91,7 +91,9 @@ pub trait PixBuf {
     }
 
     fn rect(&mut self, x: i32, y: i32, w: u32, h: u32, pix: u8) {
-        if w == 0 || h == 0 { return }
+        if w == 0 || h == 0 {
+            return;
+        }
         for i in 0..w as i32 {
             for j in 0..h as i32 {
                 self.set_pix(x + i, y + j, pix);
@@ -100,19 +102,27 @@ pub trait PixBuf {
     }
 
     fn rectb(&mut self, x: i32, y: i32, w: u32, h: u32, pix: u8) {
-        if w == 0 || h == 0 { return }
+        if w == 0 || h == 0 {
+            return;
+        }
         let (w, h) = (w as i32, h as i32);
         for i in 0..w {
             self.set_pix(x + i, y, pix);
             self.set_pix(x + i, y + h - 1, pix);
         }
-        for j in 0..h-1 {
+        for j in 0..h - 1 {
             self.set_pix(x, y + j, pix);
             self.set_pix(x + w - 1, y + j, pix);
         }
     }
 
-    fn line(&mut self, ax: i32, ay: i32, bx: i32, by: i32, pix: u8) {}
+    fn line(&mut self, ax: i32, ay: i32, bx: i32, by: i32, pix: u8) {
+        for (x, y) in
+            bresenham::Bresenham::new((ax as isize, ay as isize), (bx as isize + 1, by as isize + 1))
+        {
+            self.set_pix(x as i32, y as i32, pix);
+        }
+    }
 
     ///
     /// Returns vec of size WIDTH*HEIGHT
@@ -137,27 +147,25 @@ const fn pix_mask(bpp: usize) -> u8 {
 pub struct TAC70 {
     pub mem: [Cell<u8>; 0x18000],
     pub code: String,
-    pub char_cache: [(u32, i32); Self::CHAR_COUNT]
+    pub char_cache: [(u32, i32); Self::CHAR_COUNT],
 }
 
 impl TAC70 {
     const CHAR_COUNT: usize = 127 * 2;
 
     pub fn new(mem: &[u8], code: String) -> Self {
-
         let mut mem = mem.to_owned();
-        mem[0x14604..0x14604+8*Self::CHAR_COUNT].copy_from_slice(include_bytes!("font.bin")); // Load font to memory
+        mem[0x14604..0x14604 + 8 * Self::CHAR_COUNT].copy_from_slice(include_bytes!("font.bin")); // Load font to memory
 
         let mem = mem
             .into_iter()
             .map(|b| Cell::new(b))
             .collect::<Vec<Cell<u8>>>();
 
-
         let mut tac = Self {
             mem: mem.try_into().unwrap(),
             code,
-            char_cache: [(0,0); Self::CHAR_COUNT]
+            char_cache: [(0, 0); Self::CHAR_COUNT],
         };
         tac.update_font_data();
 
@@ -211,14 +219,20 @@ impl TAC70 {
             for i in 0..8 {
                 font[i] = self.mem[0x14604 + off + i].clone();
             }
-            Some(FontChar { mem: font.try_into().unwrap(), width: self.char_cache[ccode].0, padx: self.char_cache[ccode].1 } )
+            Some(FontChar {
+                mem: font.try_into().unwrap(),
+                width: self.char_cache[ccode].0,
+                padx: self.char_cache[ccode].1,
+            })
         } else {
             None
         }
     }
 
     pub fn mouse(&self) -> Mouse {
-        Mouse { mem: self.mem[0x0FF84..0x0FF84+4].try_into().unwrap() }
+        Mouse {
+            mem: self.mem[0x0FF84..0x0FF84 + 4].try_into().unwrap(),
+        }
     }
 
     pub fn set_sprite(&mut self, id: u16, spr: Sprite) {
@@ -242,7 +256,7 @@ impl TAC70 {
                 'col1: for i in (0..FontChar::WIDTH as i32).rev() {
                     for j in 0..FontChar::HEIGHT as i32 {
                         if fchar.get_pix(i, j) != 0 {
-                            padr = 7-i;
+                            padr = 7 - i;
                             break 'col1;
                         }
                     }
@@ -258,7 +272,7 @@ impl TAC70 {
                 }
                 let width = 8 - padr - padl;
                 self.char_cache[ccode] = (width.max(0) as u32, padl);
-            } 
+            }
         }
     }
 }
@@ -272,7 +286,7 @@ pub struct Gamepad<'a> {
 }
 
 pub struct Mouse<'a> {
-    mem: &'a [Cell<u8>; 4]
+    mem: &'a [Cell<u8>; 4],
 }
 
 impl Mouse<'_> {
@@ -309,7 +323,7 @@ impl Mouse<'_> {
         (
             buttons & 0b1 != 0,
             buttons & 0b10 != 0,
-            buttons & 0b100 != 0
+            buttons & 0b100 != 0,
         )
     }
 
@@ -450,8 +464,8 @@ impl<T: PixBuf> PixBuf for Colorized<T> {
     fn get_pix(&self, x: i32, y: i32) -> u8 {
         match self.1.get_pix(x, y) {
             0 => 0,
-            _ => self.0
-        } 
+            _ => self.0,
+        }
     }
 
     fn set_pix(&mut self, _x: i32, _y: i32, _pix: u8) {

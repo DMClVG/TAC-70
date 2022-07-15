@@ -52,6 +52,12 @@ impl TAC70Runtime {
             Ok(())
         })?;
 
+        let line = lua.create_function(|ctx, (ax, ay, bx, by, pix): (i32, i32, i32, i32, u8)| {
+            let tac = ctx.app_data_ref::<TAC70>().unwrap();
+            tac.screen().line(ax, ay, bx, by, pix);
+            Ok(())
+        })?;
+
         let print = lua.create_function(
             |ctx,
              (s, x, y, pix, fixed, scale, smallfont): (
@@ -243,6 +249,8 @@ impl TAC70Runtime {
         globals.set("rectb", rectb)?;
         globals.set("print", print)?;
         globals.set("mouse", mouse)?;
+        globals.set("line", line)?;
+
 
         drop(globals);
 
