@@ -15,6 +15,7 @@ async fn main() {
     dbg!(&cart);
     let mut runtime = TAC70Runtime::new(cart.into()).unwrap();
 
+    runtime.boot().unwrap();
     loop {
         runtime.step().unwrap();
 
