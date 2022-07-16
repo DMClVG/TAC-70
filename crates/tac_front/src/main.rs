@@ -2,7 +2,7 @@ use std::env;
 
 use rgb::ComponentBytes;
 use tac_cart::Cartridge;
-use tac_core::{Gamepads, PixBuf, Screen};
+use tac_core::{PixBuf, Screen};
 use tac_runtime::TAC70Runtime;
 
 use macroquad::prelude::*;

@@ -452,6 +452,8 @@ impl PixBuf for FontChar {
 }
 
 pub struct Colorized<T: PixBuf>(pub u8, pub T);
+pub struct Rotated<T: PixBuf>(pub u32, pub T);
+
 
 impl<T: PixBuf> PixBuf for Colorized<T> {
     const WIDTH: usize = T::WIDTH;
@@ -465,6 +467,37 @@ impl<T: PixBuf> PixBuf for Colorized<T> {
         match self.1.get_pix(x, y) {
             0 => 0,
             _ => self.0,
+        }
+    }
+
+    fn set_pix(&mut self, _x: i32, _y: i32, _pix: u8) {
+        unimplemented!()
+    }
+
+    fn set_buf(&mut self, _i: usize, _to: u8) {
+        unimplemented!()
+    }
+
+    fn get_buf(&self, _i: usize) -> u8 {
+        unimplemented!()
+    }
+}
+
+impl<T: PixBuf> PixBuf for Rotated<T> {
+    const WIDTH: usize = T::HEIGHT;
+    const HEIGHT: usize = T::WIDTH; // NOTE: This is wrong if rot == 0 or 2
+
+    const BPP: usize = T::BPP;
+
+    const MASK: u8 = pix_mask(Self::BPP);
+
+    fn get_pix(&self, x: i32, y: i32) -> u8 {
+        match self.0 % 4 {
+            0 => self.1.get_pix(x, y),
+            1 => self.1.get_pix(y, (Self::HEIGHT as i32-1)-x),
+            2 => self.1.get_pix((Self::WIDTH as i32-1) - x, (Self::HEIGHT as i32-1) - y),
+            3 => self.1.get_pix((Self::WIDTH as i32-1) - y, x),
+            _ => unreachable!()
         }
     }
 

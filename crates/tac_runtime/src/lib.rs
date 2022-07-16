@@ -1,7 +1,7 @@
 use std::{error::Error, time::Instant};
 
 use mlua::prelude::*;
-use tac_core::{Colorized, PixBuf, TAC70};
+use tac_core::{Colorized, PixBuf, TAC70, Rotated};
 
 pub struct TAC70Runtime {
     pub lua_ctx: Lua,
@@ -112,7 +112,7 @@ impl TAC70Runtime {
                 Option<u32>,
             )| {
                 let tac = ctx.app_data_ref::<TAC70>().unwrap();
-                let (scale, _rot, w, h) = (
+                let (scale, rot, w, h) = (
                     scale.unwrap_or(1),
                     rot.unwrap_or(0),
                     w.unwrap_or(1),
@@ -131,7 +131,7 @@ impl TAC70Runtime {
                         tac.screen().blit(
                             x + px as i32,
                             y + py as i32,
-                            &tac.sprite(id + (i + j * 16) as u16).unwrap(),
+                            &Rotated(rot as u32, tac.sprite(id + (i + j * 16) as u16).unwrap()),
                             alpha,
                             hflip,
                             vflip,
@@ -197,7 +197,7 @@ impl TAC70Runtime {
                 let scale = scale.unwrap_or(1); // TODO: use scale
                 for i in 0..w {
                     for j in 0..h {
-                        let (spr_id, flip, _rotate) = {
+                        let (spr_id, flip, rot) = {
                             match &remap {
                                 None => (
                                     tac.map().get(x + i, y + j).unwrap() as u16,
@@ -220,7 +220,7 @@ impl TAC70Runtime {
                         tac.screen().blit(
                             sx + i * 8 * scale as i32,
                             sy + j * 8 * scale as i32,
-                            &tac.sprite(spr_id).unwrap(),
+                            &Rotated(rot.unwrap_or(0) as u32, tac.sprite(spr_id).unwrap()),
                             alpha,
                             flip & 0b1 != 0,
                             flip & 0b10 != 0,
