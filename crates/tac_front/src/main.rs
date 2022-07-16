@@ -50,7 +50,6 @@ async fn main() {
             is_mouse_button_down(MouseButton::Right),
         );
         let (scrollx, scrolly) = mouse_wheel();
-        dbg!((scrollx, scrolly));
         let (mx, my) = (
             ((mx - offx) / upscale).max(0.0) as u8,
             ((my - offy) / upscale).max(0.0) as u8
