@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use rgb::{RGB8, RGBA8};
 use std::cell::Cell;
 
