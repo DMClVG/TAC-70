@@ -28,7 +28,7 @@ async fn main() {
 
         let (offx, offy) = (
             ((width - Screen::WIDTH as f32 * upscale) / 2.0).ceil(),
-            ((height - Screen::HEIGHT as f32 * upscale) / 2.0).ceil()
+            ((height - Screen::HEIGHT as f32 * upscale) / 2.0).ceil(),
         );
 
         let state = runtime.state();
@@ -52,7 +52,7 @@ async fn main() {
         let (scrollx, scrolly) = mouse_wheel();
         let (mx, my) = (
             ((mx - offx) / upscale).max(0.0) as u8,
-            ((my - offy) / upscale).max(0.0) as u8
+            ((my - offy) / upscale).max(0.0) as u8,
         );
 
         state.mouse().set(
@@ -62,7 +62,7 @@ async fn main() {
             mm,
             mr,
             scrollx.round() as i8,
-            scrolly.round() as i8
+            scrolly.round() as i8,
         );
 
         // ==== DRAW ====

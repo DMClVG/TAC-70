@@ -62,12 +62,7 @@ impl TAC70Runtime {
         let trib = lua.create_function(
             |ctx, (ax, ay, bx, by, cx, cy, pix): (f64, f64, f64, f64, f64, f64, u8)| {
                 let tac = ctx.app_data_ref::<TAC70>().unwrap();
-                tac.screen().trib(
-                    (ax, ay),
-                    (bx, by),
-                    (cx, cy),
-                    pix,
-                );
+                tac.screen().trib((ax, ay), (bx, by), (cx, cy), pix);
                 Ok(())
             },
         )?;
@@ -75,12 +70,7 @@ impl TAC70Runtime {
         let tri = lua.create_function(
             |ctx, (ax, ay, bx, by, cx, cy, pix): (f64, f64, f64, f64, f64, f64, u8)| {
                 let tac = ctx.app_data_ref::<TAC70>().unwrap();
-                tac.screen().tri(
-                    (ax, ay),
-                    (bx, by),
-                    (cx, cy),
-                    pix,
-                );
+                tac.screen().tri((ax, ay), (bx, by), (cx, cy), pix);
                 Ok(())
             },
         )?;
