@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use rgb::{RGB8, RGBA8};
 use std::cell::Cell;
 
@@ -116,12 +117,46 @@ pub trait PixBuf {
         }
     }
 
-    fn line(&mut self, ax: i32, ay: i32, bx: i32, by: i32, pix: u8) {
-        for (x, y) in
-            bresenham::Bresenham::new((ax as isize, ay as isize), (bx as isize + 1, by as isize + 1))
-        {
-            self.set_pix(x as i32, y as i32, pix);
+    fn line(&mut self, mut a: (f64, f64), mut b: (f64, f64), pix: u8) {
+        if (a.1 - b.1).abs() > (a.0 - b.0).abs() {
+            // if steep
+            if b.1 > a.1 {
+                // sort points by y
+                std::mem::swap(&mut a, &mut b);
+            }
+            let m = (a.0 - b.0) / (a.1 - b.1); // coefficient
+
+            while b.1 < a.1 {
+                self.set_pix(b.0 as i32, b.1 as i32, pix);
+                b.1 += 1.0;
+                b.0 += m;
+            }
+        } else {
+            // if shallow
+            if b.0 > a.0 {
+                // sort points by x
+                std::mem::swap(&mut a, &mut b);
+            }
+            let m = (a.1 - b.1) / (a.0 - b.0); // coefficient
+
+            while b.0 < a.0 {
+                self.set_pix(b.0 as i32, b.1 as i32, pix);
+                b.0 += 1.0;
+                b.1 += m;
+            }
         }
+
+        self.set_pix(a.0 as i32, a.1 as i32, pix);
+    }
+
+    fn tri(&mut self, mut a: (f64, f64), mut b: (f64, f64), mut c: (f64, f64), pix: u8) {
+        todo!();
+    }
+
+    fn trib(&mut self, a: (f64, f64), b: (f64, f64), c: (f64, f64), pix: u8) {
+        self.line(a, b, pix);
+        self.line(a, c, pix);
+        self.line(c, b, pix);
     }
 
     ///
@@ -454,7 +489,6 @@ impl PixBuf for FontChar {
 pub struct Colorized<T: PixBuf>(pub u8, pub T);
 pub struct Rotated<T: PixBuf>(pub u32, pub T);
 
-
 impl<T: PixBuf> PixBuf for Colorized<T> {
     const WIDTH: usize = T::WIDTH;
     const HEIGHT: usize = T::HEIGHT;
@@ -494,10 +528,12 @@ impl<T: PixBuf> PixBuf for Rotated<T> {
     fn get_pix(&self, x: i32, y: i32) -> u8 {
         match self.0 % 4 {
             0 => self.1.get_pix(x, y),
-            1 => self.1.get_pix(y, (Self::HEIGHT as i32-1)-x),
-            2 => self.1.get_pix((Self::WIDTH as i32-1) - x, (Self::HEIGHT as i32-1) - y),
-            3 => self.1.get_pix((Self::WIDTH as i32-1) - y, x),
-            _ => unreachable!()
+            1 => self.1.get_pix(y, (Self::HEIGHT as i32 - 1) - x),
+            2 => self
+                .1
+                .get_pix((Self::WIDTH as i32 - 1) - x, (Self::HEIGHT as i32 - 1) - y),
+            3 => self.1.get_pix((Self::WIDTH as i32 - 1) - y, x),
+            _ => unreachable!(),
         }
     }
 

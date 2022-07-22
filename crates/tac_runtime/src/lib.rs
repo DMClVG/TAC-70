@@ -1,7 +1,7 @@
 use std::{error::Error, time::Instant};
 
 use mlua::prelude::*;
-use tac_core::{Colorized, PixBuf, TAC70, Rotated};
+use tac_core::{Colorized, PixBuf, Rotated, TAC70};
 
 pub struct TAC70Runtime {
     pub lua_ctx: Lua,
@@ -52,11 +52,38 @@ impl TAC70Runtime {
             Ok(())
         })?;
 
-        let line = lua.create_function(|ctx, (ax, ay, bx, by, pix): (i32, i32, i32, i32, u8)| {
-            let tac = ctx.app_data_ref::<TAC70>().unwrap();
-            tac.screen().line(ax, ay, bx, by, pix);
-            Ok(())
-        })?;
+        let line =
+            lua.create_function(|ctx, (ax, ay, bx, by, pix): (f64, f64, f64, f64, u8)| {
+                let tac = ctx.app_data_ref::<TAC70>().unwrap();
+                tac.screen().line((ax, ay), (bx, by), pix);
+                Ok(())
+            })?;
+
+        let trib = lua.create_function(
+            |ctx, (ax, ay, bx, by, cx, cy, pix): (f64, f64, f64, f64, f64, f64, u8)| {
+                let tac = ctx.app_data_ref::<TAC70>().unwrap();
+                tac.screen().trib(
+                    (ax, ay),
+                    (bx, by),
+                    (cx, cy),
+                    pix,
+                );
+                Ok(())
+            },
+        )?;
+
+        let tri = lua.create_function(
+            |ctx, (ax, ay, bx, by, cx, cy, pix): (f64, f64, f64, f64, f64, f64, u8)| {
+                let tac = ctx.app_data_ref::<TAC70>().unwrap();
+                tac.screen().tri(
+                    (ax, ay),
+                    (bx, by),
+                    (cx, cy),
+                    pix,
+                );
+                Ok(())
+            },
+        )?;
 
         let print = lua.create_function(
             |ctx,
@@ -77,9 +104,8 @@ impl TAC70Runtime {
                     smallfont.unwrap_or(false),
                 );
 
-                
                 let mut cursor = 0;
-                let fixedw = if smallfont { 3 } else { 5 }; 
+                let fixedw = if smallfont { 3 } else { 5 };
                 for c in s.chars() {
                     let fchar = tac.char(c, smallfont).unwrap();
                     let advance = if !fixed { fchar.width as i32 } else { fixedw } + 1;
@@ -250,7 +276,8 @@ impl TAC70Runtime {
         globals.set("print", print)?;
         globals.set("mouse", mouse)?;
         globals.set("line", line)?;
-
+        globals.set("tri", tri)?;
+        globals.set("trib", trib)?;
 
         drop(globals);
 
