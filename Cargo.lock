@@ -511,15 +511,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tac_70"
-version = "0.1.0"
-dependencies = [
- "tac_cart",
- "tac_core",
- "tac_runtime",
-]
-
-[[package]]
 name = "tac_cart"
 version = "0.1.0"
 dependencies = [
