@@ -1,4 +1,5 @@
 use rgb::{RGB8, RGBA8};
+use tac_cart::Cartridge;
 use std::cell::Cell;
 
 #[derive(Clone)]
@@ -551,4 +552,56 @@ impl<T: PixBuf> PixBuf for Rotated<T> {
 
 impl Screen<'_> {
     const PX_BUFFER_SIZE: usize = (Self::WIDTH * Self::HEIGHT) / 2;
+}
+
+
+
+impl From<Cartridge> for TAC70 {
+    fn from(cart: Cartridge) -> Self {
+        let mut mem = Box::new([0u8; 0x18000]);
+        let mut code = None;
+
+        for chunk in cart.chunks() {
+            use tac_cart::ChunkType::*;
+            match chunk.info.chunk_type() {
+                Tiles => {
+                    mem[0x4000..=0x5FFF][..chunk.data.len()].copy_from_slice(&chunk.data);
+                }
+                Sprites => {
+                    mem[0x6000..=0x7FFF][..chunk.data.len()].copy_from_slice(&chunk.data);
+                }
+                Map => {
+                    mem[0x8000..=0xFF7F][..chunk.data.len()].copy_from_slice(&chunk.data);
+                }
+                Samples => {
+                    mem[0x100E4..=0x11163][..chunk.data.len()].copy_from_slice(&chunk.data);
+                }
+                Waveform => {
+                    mem[0x0FFE4..=0x100E3][..chunk.data.len()].copy_from_slice(&chunk.data);
+                }
+                Flags => {
+                    mem[0x14404..=0x14603][..chunk.data.len()].copy_from_slice(&chunk.data);
+                }
+                Music => {
+                    mem[0x13E64..=0x13FFB][..chunk.data.len()].copy_from_slice(&chunk.data);
+                }
+                Patterns => {
+                    mem[0x11164..=0x13E63][..chunk.data.len()].copy_from_slice(&chunk.data);
+                }
+                Palette => {
+                    mem[0x3FC0..=0x3FEF].copy_from_slice(&chunk.data[0..48]);
+                    if chunk.data.len() == 96 {
+                        // TODO: OVR PALETTE
+                    }
+                }
+                Code => {
+                    code = Some(std::str::from_utf8(&chunk.data).unwrap().to_string());
+                }
+                Screen => {} // dunno??
+                Default => {}
+                _ => unimplemented!(),
+            }
+        }
+        TAC70::new(mem.as_ref(), code.unwrap())
+    }
 }

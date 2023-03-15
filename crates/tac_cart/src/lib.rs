@@ -1,12 +1,11 @@
-use std::{error::Error, fmt::Debug, io::Cursor, path::Path, u8};
+use std::{error::Error, fmt::Debug, io::Cursor, path::Path, u8, slice::Iter};
 
 use binread::prelude::*;
 use modular_bitfield::prelude::*;
-use tac_core::TAC70;
 
 #[derive(BitfieldSpecifier, Debug, Clone, Copy)]
 #[bits = 5]
-enum ChunkType {
+pub enum ChunkType {
     Dummy = 0,
     Tiles = 1,
     Sprites = 2,
@@ -34,22 +33,22 @@ enum ChunkType {
 #[bitfield]
 #[derive(BinRead, Debug)]
 #[br(map = Self::from_bytes)]
-struct ChunkInfo {
-    c_type: ChunkType,
+pub struct ChunkInfo {
+    pub chunk_type: ChunkType,
     bank: B3,
 }
 
 #[derive(BinRead, Debug)]
-struct Chunk {
-    info: ChunkInfo,
+pub struct Chunk {
+    pub info: ChunkInfo,
 
     #[br(little)]
-    size: u16,
+    pub size: u16,
 
     _reserved: u8,
 
     #[br(count=size)]
-    data: Vec<u8>,
+    pub data: Vec<u8>,
 }
 
 pub struct Cartridge {
@@ -57,60 +56,14 @@ pub struct Cartridge {
     chunks: Vec<Chunk>,
 }
 
-impl From<Cartridge> for TAC70 {
-    fn from(cart: Cartridge) -> Self {
-        let mut mem = Box::new([0u8; 0x18000]);
-        let mut code = None;
-
-        for chunk in cart.chunks {
-            use ChunkType::*;
-            match chunk.info.c_type() {
-                Tiles => {
-                    mem[0x4000..=0x5FFF][..chunk.data.len()].copy_from_slice(&chunk.data);
-                }
-                Sprites => {
-                    mem[0x6000..=0x7FFF][..chunk.data.len()].copy_from_slice(&chunk.data);
-                }
-                Map => {
-                    mem[0x8000..=0xFF7F][..chunk.data.len()].copy_from_slice(&chunk.data);
-                }
-                Samples => {
-                    mem[0x100E4..=0x11163][..chunk.data.len()].copy_from_slice(&chunk.data);
-                }
-                Waveform => {
-                    mem[0x0FFE4..=0x100E3][..chunk.data.len()].copy_from_slice(&chunk.data);
-                }
-                Flags => {
-                    mem[0x14404..=0x14603][..chunk.data.len()].copy_from_slice(&chunk.data);
-                }
-                Music => {
-                    mem[0x13E64..=0x13FFB][..chunk.data.len()].copy_from_slice(&chunk.data);
-                }
-                Patterns => {
-                    mem[0x11164..=0x13E63][..chunk.data.len()].copy_from_slice(&chunk.data);
-                }
-                Palette => {
-                    mem[0x3FC0..=0x3FEF].copy_from_slice(&chunk.data[0..48]);
-                    if chunk.data.len() == 96 {
-                        // TODO: OVR PALETTE
-                    }
-                }
-                Code => {
-                    code = Some(std::str::from_utf8(&chunk.data).unwrap().to_string());
-                }
-                Screen => {} // dunno??
-                Default => {}
-                _ => unimplemented!(),
-            }
-        }
-        TAC70::new(mem.as_ref(), code.unwrap())
-    }
-}
-
 impl Cartridge {
     pub fn load(path: impl AsRef<Path>) -> Result<Cartridge, Box<dyn Error>> {
         let bytes = std::fs::read(path)?;
         Ok(Self::from_bytes(&bytes)?)
+    }
+
+    pub fn chunks(&self) -> Iter<Chunk> {
+        self.chunks.iter()
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<Cartridge, Box<dyn Error>> {
@@ -137,7 +90,7 @@ impl Debug for Cartridge {
                 "BANK: {} SIZE: {} TYPE: {:?}",
                 chunk.info.bank(),
                 chunk.size,
-                chunk.info.c_type()
+                chunk.info.chunk_type()
             )?;
         }
         Ok(())

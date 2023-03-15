@@ -516,7 +516,6 @@ version = "0.1.0"
 dependencies = [
  "binread",
  "modular-bitfield",
- "tac_core",
 ]
 
 [[package]]
@@ -526,6 +525,7 @@ dependencies = [
  "bytes",
  "itertools",
  "rgb",
+ "tac_cart",
 ]
 
 [[package]]
