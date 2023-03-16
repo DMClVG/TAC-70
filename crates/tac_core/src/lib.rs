@@ -561,7 +561,7 @@ impl From<Cartridge> for TAC70 {
         let mut mem = Box::new([0u8; 0x18000]);
         let mut code = None;
 
-        for chunk in cart.chunks() {
+        for chunk in cart.chunks {
             use tac_cart::ChunkType::*;
             match chunk.info.chunk_type() {
                 Tiles => {
