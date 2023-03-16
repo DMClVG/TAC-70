@@ -6,6 +6,7 @@ version = "0.1.0"
 edition = "2021"
 keywords = ["tac"]
 repository = "https://github.com/DMClVG/TAC-70"
+license = "MIT"
 
 [dependencies]
 binread = "2.2.0"
