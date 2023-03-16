@@ -1,6 +1,7 @@
 use std::{error::Error, fmt::Debug, io::Cursor, path::Path, u8, slice::Iter};
 
 use binread::prelude::*;
+use binwrite::*;
 use modular_bitfield::prelude::*;
 
 #[derive(BitfieldSpecifier, Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,42 +32,37 @@ pub enum ChunkType {
 }
 
 #[bitfield]
-#[derive(BinRead, Debug)]
+#[derive(BinRead, BinWrite, Debug, Clone)]
 #[br(map = Self::from_bytes)]
 pub struct ChunkInfo {
     pub chunk_type: ChunkType,
-    bank: B3,
+    pub bank: B3, // specifies in which bank the chunk lives
 }
 
-#[derive(BinRead, Debug)]
+
+#[derive(BinRead, BinWrite, Debug, Clone)]
 pub struct Chunk {
     pub info: ChunkInfo,
 
     #[br(little)]
     pub size: u16,
 
-    _reserved: u8,
+    pub reserved: u8,
 
     #[br(count=size)]
     pub data: Vec<u8>,
 }
 
+#[derive(Clone)]
 pub struct Cartridge {
     pub title: String,
-    chunks: Vec<Chunk>,
+    pub chunks: Vec<Chunk>,
 }
 
-impl Cartridge {
-    pub fn load(path: impl AsRef<Path>) -> Result<Cartridge, Box<dyn Error>> {
-        let bytes = std::fs::read(path)?;
-        Ok(Self::from_bytes(&bytes)?)
-    }
+impl TryFrom<&[u8]> for Cartridge {
+    type Error = Box<dyn Error>;
 
-    pub fn chunks(&self) -> Iter<Chunk> {
-        self.chunks.iter()
-    }
-
-    pub fn from_bytes(bytes: &[u8]) -> Result<Cartridge, Box<dyn Error>> {
+    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let mut cursor = Cursor::new(bytes);
         let mut cart = Cartridge {
             chunks: vec![],
@@ -78,6 +74,25 @@ impl Cartridge {
             cart.chunks.push(chunk);
         }
         Ok(cart)
+    }
+}
+
+impl TryInto<Vec<u8>> for Cartridge {
+    type Error = Box<dyn Error>;
+
+    fn try_into(self) -> Result<Vec<u8>, Self::Error> {
+        let mut out = Vec::new();
+        for chunk in self.chunks {
+            chunk.write(&mut out)?;
+        }
+        Ok(out)
+    }
+}
+
+impl Cartridge {
+    pub fn load(path: impl AsRef<Path>) -> Result<Cartridge, Box<dyn Error>> {
+        let bytes = std::fs::read(path)?;
+        Ok(Cartridge::try_from(bytes.as_slice())?)
     }
 }
 

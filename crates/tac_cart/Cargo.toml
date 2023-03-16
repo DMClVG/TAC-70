@@ -10,4 +10,5 @@ license = "MIT"
 
 [dependencies]
 binread = "2.2.0"
+binwrite = "0.2.1"
 modular-bitfield = "0.11.2"
