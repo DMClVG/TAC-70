@@ -3,7 +3,7 @@ use std::{error::Error, fmt::Debug, io::Cursor, path::Path, u8, slice::Iter};
 use binread::prelude::*;
 use modular_bitfield::prelude::*;
 
-#[derive(BitfieldSpecifier, Debug, Clone, Copy)]
+#[derive(BitfieldSpecifier, Debug, Clone, Copy, PartialEq, Eq)]
 #[bits = 5]
 pub enum ChunkType {
     Dummy = 0,
