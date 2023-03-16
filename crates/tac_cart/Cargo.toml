@@ -1,9 +1,11 @@
 [package]
 name = "tac_cart"
+description = "TIC-80/TAC-70 cart loader"
+authors = ["DMClVG"]
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+keywords = ["tac"]
+repository = "https://github.com/DMClVG/TAC-70"
 
 [dependencies]
 binread = "2.2.0"
