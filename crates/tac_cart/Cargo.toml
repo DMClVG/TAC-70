@@ -2,7 +2,7 @@
 name = "tac_cart"
 description = "TIC-80/TAC-70 cart loader"
 authors = ["DMClVG"]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 keywords = ["tac"]
 repository = "https://github.com/DMClVG/TAC-70"
